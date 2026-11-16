@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Image,
   Pressable,
@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { images } from "./assets";
+import { api, type Pedido } from "./api";
 
 type Screen =
   | "home"
@@ -43,40 +44,7 @@ const C = {
   cream: "#fff7f4",
   white: "#ffffff",
 };
-const products: Product[] = [
-  {
-    id: 1,
-    category: "Petiscos para cães",
-    name: "Biscoitos orgânicos de osso",
-    price: 12.99,
-    rating: "4.9 (120)",
-    image: images.biscuit,
-  },
-  {
-    id: 2,
-    category: "Diversão para gatos",
-    name: "Varinha com penas",
-    price: 8.5,
-    rating: "4.8 (85)",
-    image: images.wand,
-  },
-  {
-    id: 3,
-    category: "Camas e conforto",
-    name: "Cama donut marshmallow",
-    price: 45,
-    rating: "5.0 (210)",
-    image: images.bed,
-  },
-  {
-    id: 4,
-    category: "Alimentação",
-    name: "Comedouro elevado de cerâmica",
-    price: 22,
-    rating: "4.7 (46)",
-    image: images.bowl,
-  },
-];
+
 const money = (n: number) => `R$ ${n.toFixed(2).replace(".", ",")}`;
 const Heading = ({
   children,
@@ -124,8 +92,15 @@ const Field = ({
 export default function App() {
   const [screen, setScreen] = useState<Screen>("home");
   const [history, setHistory] = useState<Screen[]>([]);
-  const [cart, setCart] = useState<Record<number, number>>({ 1: 2, 2: 1 });
-  const [favorites, setFavorites] = useState<number[]>([1, 3]);
+  const [cart, setCart] = useState<Record<number, number>>({});
+  const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<Pedido[]>([]);
+  const [ready, setReady] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const lock = useRef(false);
+  const requestId = useRef<string | null>(null);
+  const [favorites, setFavorites] = useState<number[]>([]);
   const [selected, setSelected] = useState(1);
   const [search, setSearch] = useState("");
   const [order, setOrder] = useState<{
@@ -133,6 +108,9 @@ export default function App() {
     total: number;
     createdAt: Date;
     items: Product[];
+    subtotal: number;
+    delivery: number;
+    status: string;
   } | null>(null);
   const go = (next: Screen) => {
     setHistory((h) => [...h, screen]);
@@ -142,12 +120,58 @@ export default function App() {
     setScreen(history[history.length - 1] || "home");
     setHistory((h) => h.slice(0, -1));
   };
+  const sync = async () => {
+    const data = await api.sincronizar();
+    setProducts(data.produtos.map(p => ({
+      id: p.id, name: p.nome, category: p.categoria, price: p.preco,
+      rating: `${p.avaliacao} (${p.numAvaliacoes})`, image: p.imagem,
+    })));
+    setCart(data.carrinho);
+    setFavorites(data.favoritos);
+    setOrders(data.pedidos);
+    setReady(true);
+  };
+  const run = async (action: () => Promise<void>) => {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    try { await action(); }
+    catch (e) { setError(e instanceof Error ? e.message : "Não foi possível conectar à API."); }
+    finally { lock.current = false; setBusy(false); }
+  };
+  useEffect(() => { void run(sync); }, []);
+  const saveCart = (next: Record<number, number>) => run(async () => {
+    const saved = await api.salvarCarrinho(next);
+    setCart(saved);
+    requestId.current = null;
+  });
   const add = (id: number, delta = 1) =>
-    setCart((c) => ({ ...c, [id]: Math.max(0, (c[id] || 0) + delta) }));
-  const toggleFavorite = (id: number) =>
-    setFavorites((f) =>
-      f.includes(id) ? f.filter((x) => x !== id) : [...f, id],
-    );
+    saveCart({ ...cart, [id]: Math.min(99, Math.max(0, (cart[id] || 0) + delta)) });
+  const toggleFavorite = (id: number) => run(async () => {
+    setFavorites(await (favorites.includes(id) ? api.desfavoritar(id) : api.favoritar(id)));
+  });
+  const selectOrder = (p: Pedido) => setOrder({
+    id: p.codigo, total: p.total, subtotal: p.subtotal, delivery: p.entrega,
+    status: p.status, createdAt: new Date(p.criadoEm),
+    items: p.itens.map(i => ({
+      id: i.produtoId, name: `${i.nome} × ${i.quantidade}`,
+      category: i.categoria, image: i.imagem, price: i.totalItem, rating: "",
+    })),
+  });
+  const checkout = () => run(async () => {
+    if (!items.length) throw new Error("Seu carrinho está vazio.");
+    requestId.current ??= `mobile-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const saved = await api.criarPedido({
+      idLocal: requestId.current,
+      itens: items.map(p => ({ produtoId: p.id, quantidade: cart[p.id] })),
+    });
+    selectOrder(saved);
+    setOrders(old => [saved, ...old.filter(p => p.id !== saved.id)]);
+    setCart({});
+    requestId.current = null;
+    go("confirmed");
+  });
   const subtotal = products.reduce(
     (sum, p) => sum + p.price * (cart[p.id] || 0),
     0,
@@ -280,7 +304,6 @@ export default function App() {
               <Text style={s.muted}>
                 Vamos encontrar algo delicioso para o Buddy hoje
               </Text>
-products
             </View>
             <View style={s.banner}>
               <View
@@ -342,7 +365,7 @@ products
           <>
             {header(
               "Meu carrinho",
-              <Pressable onPress={() => setCart({})}>
+              <Pressable onPress={() => saveCart({})}>
                 <Text style={{ color: C.coral, fontWeight: "700" }}>
                   Limpar tudo
                 </Text>
@@ -397,21 +420,13 @@ products
             {header("Meus pedidos")}
             <View style={s.section}>
               <Heading size={18}>Acompanhe suas compras</Heading>
-              {["#PL-2048", "#PL-1876"].map((id, i) => (
-                <Pressable key={id} onPress={() => go("orderDetail")}>
+              {!orders.length && <Text style={s.muted}>Nenhum pedido registrado.</Text>}
+              {orders.map(p => (
+                <Pressable key={p.id} onPress={() => { selectOrder(p); go("orderDetail"); }}>
                   <Panel>
-                    <View style={s.rowBetween}>
-                      <Text style={s.label}>Pedido {id}</Text>
-                      <Text style={{ color: C.coral }}>
-                        {i ? "Entregue" : "A caminho"}
-                      </Text>
-                    </View>
-                    <Text style={s.muted}>
-                      {i ? "12/03/2025" : "Hoje, 12:10"}
-                    </Text>
-                    <Text style={s.label}>
-                      {i ? "1 item · R$ 45,00" : "3 itens · R$ 40,38"}
-                    </Text>
+                    <Text style={s.label}>Pedido {p.codigo} · {p.status}</Text>
+                    <Text style={s.muted}>{formatOrderDate(new Date(p.criadoEm))}</Text>
+                    <Text>{p.quantidadeItens} itens · {money(p.total)}</Text>
                     <Text style={{ color: C.coral }}>Ver detalhes →</Text>
                   </Panel>
                 </Pressable>
@@ -441,7 +456,7 @@ products
               <View style={s.heroWrap}>
                 <Image
                   source={{
-                    uri: selected === 1 ? images.detail : current.image,
+                    uri: current.image,
                   }}
                   style={s.hero}
                 />
@@ -502,20 +517,7 @@ products
               {items.map((p) => cartItem(p, false))}
               {summary()}
               <Button
-                onPress={() => {
-                  const orderItems = items.map((p) => p);
-                  const orderTotal = subtotal + delivery;
-                  const now = new Date();
-
-                  setOrder({
-                    id: `${Math.floor(100000 + Math.random() * 900000)}`,
-                    total: orderTotal,
-                    createdAt: now,
-                    items: orderItems,
-                  });
-                  setCart({});
-                  go("confirmed");
-                }}
+                onPress={checkout}
               >
                 Confirmar pedido
               </Button>
@@ -546,7 +548,7 @@ products
             <Heading size={38}>Pedido confirmado!</Heading>
 
             <Text style={s.confirmedSubtitle}>
-              Obrigado! O seu pedido já está sendo preparado com muito
+              Obrigado! O seu pedido foi registrado com muito
               carinho.
             </Text>
 
@@ -562,11 +564,11 @@ products
               <View style={s.summaryRow}>
                 <Text style={s.summaryLabel}>Previsão de entrega</Text>
                 <Text style={[s.summaryValue, s.summaryValueGreen]}>
-                  Hoje até às {estimatedText}
+                  A confirmar
                 </Text>
               </View>
               <View style={[s.summaryRow, s.summaryRowTotal]}>
-                <Text style={s.summaryLabel}>Total pago</Text>
+                <Text style={s.summaryLabel}>Total do pedido</Text>
                 <Text style={s.totalPaid}>{formatMoney(confirmedOrder.total)}</Text>
               </View>
             </View>
@@ -576,7 +578,7 @@ products
                 <Text style={s.deliveryIcon}>🚚</Text>
               </View>
               <Text style={s.deliveryText}>
-                Nosso entregador de confiança já está a caminho!
+                Status: {order?.status ?? "Confirmado"}
               </Text>
             </View>
 
@@ -609,7 +611,7 @@ products
                 Realizado em {formatOrderDate(detailOrder.createdAt)}
               </Text>
 
-              {summary(detailTotal - delivery, delivery)}
+              {summary(order?.subtotal ?? 0, order?.delivery ?? 0)}
 
               <Heading size={18}>Itens do pedido</Heading>
               
@@ -642,7 +644,7 @@ products
                   Esqueceu a senha?
                 </Text>
               </Pressable>
-              <Button onPress={() => go("home")}>Entrar</Button>
+              <Button onPress={() => setError("Esta API não possui autenticação. Use o aplicativo em modo demonstração.")}>Entrar</Button>
               <Pressable onPress={() => go("signup")}>
                 <Text style={s.center}>
                   Não tem uma conta?{" "}
@@ -678,7 +680,7 @@ products
                 ☑ Eu aceito as políticas de Privacidade e os Termos de Serviço
                 da Petlove.
               </Text>
-              <Button onPress={() => go("home")}>Criar minha conta</Button>
+              <Button onPress={() => setError("Cadastro de usuários ainda não está disponível nesta API.")}>Criar minha conta</Button>
               <Pressable onPress={() => go("login")}>
                 <Text style={s.center}>
                   Já possui conta?{" "}
@@ -699,7 +701,7 @@ products
                 Informe seu e-mail para receber as instruções de recuperação.
               </Text>
               <Field label="E-mail" placeholder="seuemail@exemplo.com" />
-              <Button onPress={() => go("login")}>Enviar instruções</Button>
+              <Button onPress={() => setError("Recuperação de senha ainda não está disponível nesta API.")}>Enviar instruções</Button>
             </View>
           </>
         );
@@ -720,7 +722,11 @@ products
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: showTabs ? 110 : 36 }}
       >
-        {content()}
+        {!!error && <View style={s.section}><Text accessibilityRole="alert" style={{ color: "#a32020" }}>{error}</Text><Button onPress={() => run(sync)}>Tentar conectar novamente</Button></View>}
+        {busy && <Text style={s.center}>Conectando à API…</Text>}
+        <View pointerEvents={busy ? "none" : "auto"} style={{ opacity: busy ? 0.6 : 1 }}>
+          {ready ? content() : !busy && <Text style={s.center}>Inicie o backend para carregar a loja.</Text>}
+        </View>
       </ScrollView>
       {showTabs && (
         <View style={s.tabs}>
