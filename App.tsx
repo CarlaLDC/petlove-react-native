@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { images } from "./assets";
-import { api, ItemPedido, type Pedido } from "./api";
+import { api, type Pedido } from "./api";
 
 type Screen =
   | "home"
@@ -113,12 +113,12 @@ export default function App() {
     status: string;
   } | null>(null);
   const go = (next: Screen) => {
-    setHistory((h: any) => [...h, screen]);
+    setHistory((h) => [...h, screen]);
     setScreen(next);
   };
   const back = () => {
     setScreen(history[history.length - 1] || "home");
-    setHistory((h: string | any[]) => h.slice(0, -1));
+    setHistory((h) => h.slice(0, -1));
   };
   const sync = async () => {
     const data = await api.sincronizar();
@@ -164,20 +164,20 @@ export default function App() {
     requestId.current ??= `mobile-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const saved = await api.criarPedido({
       idLocal: requestId.current,
-      itens: items.map((p: { id: string | number; }) => ({ produtoId: p.id, quantidade: cart[p.id] })),
+      itens: items.map((p) => ({ produtoId: p.id, quantidade: cart[p.id] })),
     });
     selectOrder(saved);
-    setOrders((old: any[]) => [saved, ...old.filter((p: { id: number; }) => p.id !== saved.id)]);
+    setOrders((old) => [saved, ...old.filter((p) => p.id !== saved.id)]);
     setCart({});
     requestId.current = null;
     go("confirmed");
   });
   const subtotal = products.reduce(
-    (sum: number, p: { price: number; id: string | number; }) => sum + p.price * (cart[p.id] || 0),
+    (sum, p) => sum + p.price * (cart[p.id] || 0),
     0,
   );
   const delivery = subtotal > 0 ? 5.9 : 0;
-  const items = products.filter((p: { id: string | number; }) => cart[p.id] > 0);
+  const items = products.filter((p) => cart[p.id] > 0);
   const formatMoney = (value: number) => money(value);
   const formatOrderDate = (date: Date) =>
     date.toLocaleString("pt-BR", {
@@ -198,13 +198,13 @@ export default function App() {
     setSelected(id);
     go("product");
   };
-  const current = products.find((p: { id: any; }) => p.id === selected) || products[0];
+  const current = products.find((p) => p.id === selected) || products[0];
   const header = (title: string, right?: React.ReactNode) => (
     <View style={s.header}>
       <Pressable onPress={back} style={s.back}>
         <Text style={{ color: C.ink, fontSize: 22 }}>‹</Text>
       </Pressable>
-      <Heading children={undefined}>{title}</Heading>
+      <Heading>{title}</Heading>
       <View style={{ flex: 1 }} />
       {right}
     </View>
@@ -222,7 +222,7 @@ export default function App() {
       </Text>
       <Text style={s.muted}>⭐ {p.rating}</Text>
       <View style={s.rowBetween}>
-        <Heading size={18} children={undefined}>{money(p.price)}</Heading>
+        <Heading size={18}>{money(p.price)}</Heading>
         <Pressable onPress={() => add(p.id)} style={s.add}>
           <Text style={{ color: C.white, fontSize: 20 }}>+</Text>
         </Pressable>
@@ -230,7 +230,7 @@ export default function App() {
     </Pressable>
   );
   const cartItem = (p: Product, controls = true) => (
-    <Panel children={undefined}>
+    <Panel>
       <View style={s.cartItem}>
         <Image source={{ uri: p.image }} style={s.thumb} />
         <View style={{ flex: 1, gap: 6 }}>
@@ -263,7 +263,7 @@ export default function App() {
     </Panel>
   );
   const summary = (currentSubtotal = subtotal, currentDelivery = delivery) => (
-    <Panel children={undefined}>
+    <Panel>
       <Text style={s.label}>Resumo do pedido</Text>
       <View style={s.summaryLine}>
         <Text style={s.muted}>Subtotal</Text>
@@ -275,8 +275,8 @@ export default function App() {
       </View>
       <View style={s.separator} />
       <View style={s.rowBetween}>
-        <Heading size={18} children={undefined}>Total</Heading>
-        <Heading size={20} children={undefined}>{money(currentSubtotal + currentDelivery)}</Heading>
+        <Heading size={18}>Total</Heading>
+        <Heading size={20}>{money(currentSubtotal + currentDelivery)}</Heading>
       </View>
     </Panel>
   );
@@ -300,7 +300,7 @@ export default function App() {
               </View>
             </View>
             <View style={s.section}>
-              <Heading size={28} children={undefined}>Olá, Sarah! 👋</Heading>
+              <Heading size={28}>Olá, Sarah! 👋</Heading>
               <Text style={s.muted}>
                 Vamos encontrar algo delicioso para o Buddy hoje
               </Text>
@@ -315,7 +315,7 @@ export default function App() {
               >
                 <View>
                   <Text style={s.pill}>OFERTA DA SEMANA</Text>
-                  <Heading size={20} children={undefined}>
+                  <Heading size={20}>
                     Patinhas saudáveis, corações felizes
                   </Heading>
                 </View>
@@ -329,7 +329,7 @@ export default function App() {
               />
             </View>
             <View style={s.section}>
-              <Heading size={18} children={undefined}>Compre por pet</Heading>
+              <Heading size={18}>Compre por pet</Heading>
               <View style={s.categories}>
                 {[
                   ["🐶", "Cães"],
@@ -345,12 +345,12 @@ export default function App() {
                 ))}
               </View>
               <View style={s.rowBetween}>
-                <Heading size={18} children={undefined}>Petiscos e brinquedos populares</Heading>
+                <Heading size={18}>Petiscos e brinquedos populares</Heading>
                 <Text style={{ color: C.coral }}>Ver tudo</Text>
               </View>
               <View style={s.grid}>
                 {products
-                  .filter((p: { name: any; category: any; }) =>
+                  .filter((p) =>
                     `${p.name} ${p.category}`
                       .toLowerCase()
                       .includes(search.toLowerCase()),
@@ -376,14 +376,14 @@ export default function App() {
                 <>
                   {items.map((p: Product) => cartItem(p))}
                   {summary()}
-                  <Button onPress={() => go("checkout")} children={undefined}>
+                  <Button onPress={() => go("checkout")}>
                     Continuar para pagamento →
                   </Button>
                 </>
               ) : (
-                <Panel children={undefined}>
+                <Panel>
                   <Text style={s.muted}>Seu carrinho está vazio.</Text>
-                  <Button onPress={() => go("home")} children={undefined}>Explorar produtos</Button>
+                  <Button onPress={() => go("home")}>Explorar produtos</Button>
                 </Panel>
               )}
             </View>
@@ -394,21 +394,21 @@ export default function App() {
           <>
             {header("Meu perfil")}
             <View style={s.section}>
-              <Panel children={undefined}>
+              <Panel>
                 <View style={s.cartItem}>
                   <Image source={{ uri: images.avatar }} style={s.avatar} />
                   <View>
-                    <Heading size={20} children={undefined}>Sarah Santos</Heading>
+                    <Heading size={20}>Sarah Santos</Heading>
                     <Text style={s.muted}>sarah.santos@gmail.com</Text>
                   </View>
                 </View>
               </Panel>
-              <Panel children={undefined}>
+              <Panel>
                 {menu("Meus pedidos", "orders", "📦")}
                 {menu("Meus favoritos", "favorites", "♡")}
                 {menu("Meus dados", "signup", "👤")}
               </Panel>
-              <Button light onPress={() => go("login")} children={undefined}>
+              <Button light onPress={() => go("login")}>
                 Sair da conta
               </Button>
             </View>
@@ -419,25 +419,11 @@ export default function App() {
           <>
             {header("Meus pedidos")}
             <View style={s.section}>
-              <Heading size={18} children={undefined}>Acompanhe suas compras</Heading>
+              <Heading size={18}>Acompanhe suas compras</Heading>
               {!orders.length && <Text style={s.muted}>Nenhum pedido registrado.</Text>}
-              {orders.map((p: { 
-                id: any; 
-                codigo: any; 
-                status: any; 
-                criadoEm: any; 
-                quantidadeItens: any; 
-                total: any; 
-                idLocal?: string | null | undefined; 
-                cep?: string; 
-                endereco?: string; 
-                cidade?: string; 
-                uf?: string; 
-                subtotal?: number; 
-                entrega?: number; 
-                itens?: ItemPedido[]; }) => (
+              {orders.map((p) => (
                 <Pressable key={p.id} onPress={() => { selectOrder(p); go("orderDetail"); }}>
-                  <Panel children={undefined}>
+                  <Panel>
                     <Text style={s.label}>Pedido {p.codigo} · {p.status}</Text>
                     <Text style={s.muted}>{formatOrderDate(new Date(p.criadoEm))}</Text>
                     <Text>{p.quantidadeItens} itens · {money(p.total)}</Text>
@@ -453,10 +439,10 @@ export default function App() {
           <>
             {header("Favoritos")}
             <View style={s.section}>
-              <Heading size={18} children={undefined}>Produtos que você ama ♡</Heading>
+              <Heading size={18}>Produtos que você ama ♡</Heading>
               <View style={s.grid}>
                 {products
-                  .filter((p: { id: any; }) => favorites.includes(p.id))
+                  .filter((p) => favorites.includes(p.id))
                   .map(productCard)}
               </View>
             </View>
@@ -486,11 +472,11 @@ export default function App() {
               <Text style={[s.category, { color: C.coral }]}>
                 {current.category.toUpperCase()}
               </Text>
-              <Heading size={24} children={undefined}>{current.name}</Heading>
+              <Heading size={24}>{current.name}</Heading>
               <Text style={s.muted}>
                 ⭐ {current.rating} avaliações de tutores
               </Text>
-              <Heading size={28} children={undefined}>{money(current.price)}</Heading>
+              <Heading size={28}>{money(current.price)}</Heading>
               <Text style={s.muted}>
                 Feitos para trazer mais conforto e alegria para seu pet. Produto
                 selecionado com carinho para a rotina do seu melhor amigo.
@@ -515,7 +501,7 @@ export default function App() {
                 onPress={() => {
                   add(selected);
                   go("cart");
-                } } children={undefined}              >
+                } }              >
                 Adicionar ao carrinho
               </Button>
             </View>
@@ -526,11 +512,11 @@ export default function App() {
           <>
             {header("Revisar pedido")}
             <View style={s.section}>
-              <Heading size={18} children={undefined}>Itens do pedido</Heading>
+              <Heading size={18}>Itens do pedido</Heading>
               {items.map((p: Product) => cartItem(p, false))}
               {summary()}
               <Button
-                onPress={checkout} children={undefined}              >
+                onPress={checkout}              >
                 Confirmar pedido
               </Button>
             </View>
@@ -557,7 +543,7 @@ export default function App() {
               <Text style={s.successBadgeText}>✓</Text>
             </View>
 
-            <Heading size={38} children={undefined}>Pedido confirmado!</Heading>
+            <Heading size={38}>Pedido confirmado!</Heading>
 
             <Text style={s.confirmedSubtitle}>
               Obrigado! O seu pedido foi registrado com muito
@@ -618,18 +604,18 @@ export default function App() {
           <>
             {header("Detalhes do pedido")}
             <View style={s.section}>
-              <Heading size={22} children={undefined}>Pedido #{detailOrder.id}</Heading>
+              <Heading size={22}>Pedido #{detailOrder.id}</Heading>
               <Text style={s.muted}>
                 Realizado em {formatOrderDate(detailOrder.createdAt)}
               </Text>
 
               {summary(order?.subtotal ?? 0, order?.delivery ?? 0)}
 
-              <Heading size={18} children={undefined}>Itens do pedido</Heading>
+              <Heading size={18}>Itens do pedido</Heading>
               
               {detailOrder.items.map((p: Product) => cartItem(p, false))}
 
-              <Panel children={undefined}>
+              <Panel>
                 <Text style={s.label}>Precisa de ajuda com o pedido?</Text>
                 <Text style={s.muted}>
                   Fale com o suporte no chat online 24h
@@ -645,7 +631,7 @@ export default function App() {
             {header("Entrar")}
             <View style={[s.section, { paddingTop: 40 }]}>
               <Text style={{ fontSize: 40 }}>🐾</Text>
-              <Heading size={28} children={undefined}>Bem-vinda de volta!</Heading>
+              <Heading size={28}>Bem-vinda de volta!</Heading>
               <Text style={s.muted}>
                 Entre na sua conta para cuidar do seu pet.
               </Text>
@@ -656,7 +642,7 @@ export default function App() {
                   Esqueceu a senha?
                 </Text>
               </Pressable>
-              <Button onPress={() => setError("Esta API não possui autenticação. Use o aplicativo em modo demonstração.")} children={undefined}>Entrar</Button>
+              <Button onPress={() => setError("Esta API não possui autenticação. Use o aplicativo em modo demonstração.")}>Entrar</Button>
               <Pressable onPress={() => go("signup")}>
                 <Text style={s.center}>
                   Não tem uma conta?{" "}
@@ -671,7 +657,7 @@ export default function App() {
           <>
             {header("Criar conta")}
             <View style={s.section}>
-              <Heading size={26} children={undefined}>Vamos começar? 🐾</Heading>
+              <Heading size={26}>Vamos começar? 🐾</Heading>
               <Text style={s.muted}>
                 Crie sua conta e encontre tudo para o seu pet.
               </Text>
@@ -692,7 +678,7 @@ export default function App() {
                 ☑ Eu aceito as políticas de Privacidade e os Termos de Serviço
                 da Petlove.
               </Text>
-              <Button onPress={() => setError("Cadastro de usuários ainda não está disponível nesta API.")} children={undefined}>Criar minha conta</Button>
+              <Button onPress={() => setError("Cadastro de usuários ainda não está disponível nesta API.")}>Criar minha conta</Button>
               <Pressable onPress={() => go("login")}>
                 <Text style={s.center}>
                   Já possui conta?{" "}
@@ -708,12 +694,12 @@ export default function App() {
             {header("Esqueci a senha")}
             <View style={[s.section, { paddingTop: 60 }]}>
               <Text style={{ fontSize: 48 }}>🔒</Text>
-              <Heading size={26} children={undefined}>Recuperar senha</Heading>
+              <Heading size={26}>Recuperar senha</Heading>
               <Text style={s.muted}>
                 Informe seu e-mail para receber as instruções de recuperação.
               </Text>
               <Field label="E-mail" placeholder="seuemail@exemplo.com" />
-              <Button onPress={() => setError("Recuperação de senha ainda não está disponível nesta API.")} children={undefined}>Enviar instruções</Button>
+              <Button onPress={() => setError("Recuperação de senha ainda não está disponível nesta API.")}>Enviar instruções</Button>
             </View>
           </>
         );
@@ -734,7 +720,7 @@ export default function App() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: showTabs ? 110 : 36 }}
       >
-        {!!error && <View style={s.section}><Text accessibilityRole="alert" style={{ color: "#a32020" }}>{error}</Text><Button onPress={() => run(sync)} children={undefined}>Tentar conectar novamente</Button></View>}
+        {!!error && <View style={s.section}><Text accessibilityRole="alert" style={{ color: "#a32020" }}>{error}</Text><Button onPress={() => run(sync)}>Tentar conectar novamente</Button></View>}
         {busy && <Text style={s.center}>Conectando à API…</Text>}
         <View pointerEvents={busy ? "none" : "auto"} style={{ opacity: busy ? 0.6 : 1 }}>
           {ready ? content() : !busy && <Text style={s.center}>Inicie o backend para carregar a loja.</Text>}
