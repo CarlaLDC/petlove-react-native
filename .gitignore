@@ -6,3 +6,9 @@ dist/
 banco/*.db
 banco/*.db-*
 backend/exportacoes/
+
+# Dashboard Python / Streamlit
+**/.venv/
+**/__pycache__/
+*.py[cod]
+petlove_dash/.streamlit/secrets.toml

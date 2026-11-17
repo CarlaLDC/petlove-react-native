@@ -57,3 +57,35 @@ Os testes incluem a suíte original do backend e um teste que executa o cliente 
 Para executar separadamente: `npm run backend` e, em outro terminal, `npm run frontend`. Não execute `npm start` junto com um backend já iniciado.
 
 A cópia do backend é independente: mudanças futuras no repositório de origem precisam ser trazidas explicitamente.
+
+## Dashboard de acompanhamento
+
+A pasta `petlove_dash/` contém o dashboard Python/Streamlit enviado com o projeto,
+com os arquivos de inicialização, configuração e dados de exemplo preservados.
+Ela fica ao lado de `backend/` e `banco/`; o aplicativo React Native continua na raiz.
+
+Com Python 3.10 ou superior instalado, execute em outro terminal:
+
+```bash
+cd petlove_dash
+python -m venv .venv
+```
+
+Ative o ambiente com `.venv\Scripts\activate` no Windows ou
+`source .venv/bin/activate` no macOS/Linux. Depois execute:
+
+```bash
+python -m pip install -r requirements.txt
+python -m streamlit run app.py
+```
+
+Também é possível abrir `petlove_dash/iniciar.bat` no Windows ou executar
+`./iniciar.command` dentro de `petlove_dash/` no macOS/Linux. Os inicializadores
+instalam as dependências na primeira execução. O dashboard abre normalmente em
+`http://localhost:8501` e roda separadamente do `npm start`.
+
+O arquivo `petlove_dash/dados/dados.json` contém **dados fictícios**, não uma
+sincronização automática com o banco do aplicativo. Para usar dados reais,
+forneça um JSON no formato esperado pelo dashboard ou ajuste `MAPEAMENTO` em
+`app.py`. A exportação atual do backend usa outro formato e exige adaptação
+antes de ser consumida. Veja [o README do dashboard](petlove_dash/README.md).
